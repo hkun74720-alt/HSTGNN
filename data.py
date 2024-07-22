@@ -13,7 +13,6 @@ import pandas as pd
 
 def add_gaussian_noise(data, mean, std_dev, proportion):
     """
-    给数据添加高斯噪声。
     
     参数：
     data (np.ndarray): 原始数据。
