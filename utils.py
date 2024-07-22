@@ -16,7 +16,7 @@ def disentangle(x, w, j):
     xh = pywt.waverec(coefh, w).transpose(0,3,2,1)
 
     return xl, xh
-"""图注意力层："""
+
 class GraphAttentionLayer(nn.Module):
     """
     Simple GAT layer, similar to https://arxiv.org/abs/1710.10903
@@ -62,13 +62,13 @@ class GraphAttentionLayer(nn.Module):
     def __repr__(self):  
         return self.__class__.__name__ + ' (' + str(self.in_features) + ' -> ' + str(self.out_features) + ')'
 
-"""图注意力网络模块："""
+
 class GAT(nn.Module):
     def __init__(self, n_in, n_out, dropout, alpha, nheads, order=1, temp=1):
         """Dense version of GAT."""
         super(GAT, self).__init__()
         self.dropout = dropout
-        self.nheads = nheads   #注意力头数
+        self.nheads = nheads  
         self.order = order
         self.n_in = n_in
         self.temp = temp
@@ -242,6 +242,6 @@ class TAttention(nn.Module):
 
         out = out.transpose(dim, -2)
         out = out.transpose(1,3)
-        out = out[:,:,:,-out.size(3):-self.temp]   #为什么使输出shape对应
+        out = out[:,:,:,-out.size(3):-self.temp] 
       
         return out
