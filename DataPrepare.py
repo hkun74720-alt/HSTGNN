@@ -108,15 +108,15 @@ def generate_train_val_test(args):
         df,
         x_offsets=x_offsets,
         y_offsets=y_offsets,
-        add_time_in_day=False,
-        add_day_in_week=False,
+        add_time_in_day=True,
+        add_day_in_week=True,
     )
 
     # 添加高斯噪声
-    noise_mean = 10
-    noise_std_dev = 500
-    noise_proportion = 0.05  # 调整为20%、40%或60%
-    x = add_gaussian_noise(x, noise_mean, noise_std_dev, noise_proportion)
+    #noise_mean = 10
+    #noise_std_dev = 500
+    #noise_proportion = 0.05  # 调整为20%、40%或60%
+    #x = add_gaussian_noise(x, noise_mean, noise_std_dev, noise_proportion)
 
     print("x shape: ", x.shape, ", y shape: ", y.shape)
     # Write the data into npz file.
@@ -158,12 +158,12 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--output_dir", type=str, default="data/PEMS04", help="Output directory."
+        "--output_dir", type=str, default="data/PEMS08", help="Output directory."
     )
     parser.add_argument(
         "--traffic_df_filename",
         type=str,
-        default="data/PEMS04/PEMS04.npz",
+        default="data/PEMS08/PEMS08.npz",
         help="Raw traffic readings.",
     )
     args = parser.parse_args()
