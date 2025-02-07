@@ -396,7 +396,7 @@ class HybridGraphLearner(nn.Module):
 
 
 
-class STAMT(nn.Module):
+class HSTGNN(nn.Module):
     def __init__(
         self,
         device,
