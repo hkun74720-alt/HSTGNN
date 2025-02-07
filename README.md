@@ -26,13 +26,4 @@ We also provided pre-trained model, and yoou can run the following code to test 
 python test.py
 ```
 
-## Results
-<p align="center">
-<img src="figs/stamt_result1.png" width="100%">
-</p>
-<p align="center">
-<img src="figs/stamt_result2.png" width="100%">
-</p>
-<p align="center">
-<img src="figs/stamt_result3.png" width="55%">
-</p>
+
