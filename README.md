@@ -1,5 +1,5 @@
 # HSTGNN
-This is the pytorch implementation of HSSTGGNN. 
+This is the pytorch implementation of HSTGNN. 
 
 [This paper has been accepted by Information fusion 2025 now.](https://doi.org/10.1016/j.inffus.2025.102978)
 
