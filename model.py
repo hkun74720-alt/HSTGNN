@@ -507,8 +507,8 @@ class HSTGNN(nn.Module):
 
         D_graph = F.softmax(F.relu(torch.mm(E_d.transpose(0,1), E_d)), dim=1)
 
-        res = self.fc(res)[..., 0].unsqueeze(-1)  
-        data_st = torch.cat([input_data] + [res], dim=1)
+        res_ = self.fc(res)[..., 0].unsqueeze(-1)  
+        data_st = torch.cat([input_data] + [res_], dim=1)
 
         skip = self.fc_st(data_st)
         data_st = self.HGL(data_st, D_graph) + skip
