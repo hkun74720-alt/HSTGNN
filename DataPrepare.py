@@ -11,31 +11,6 @@ import numpy as np
 import os
 import pandas as pd
 
-def add_gaussian_noise(data, mean, std_dev, proportion):
-    """
-    
-    参数：
-    data (np.ndarray): 原始数据。
-    mean (float): 高斯噪声的均值。
-    std_dev (float): 高斯噪声的标准差。
-    proportion (float): 添加噪声的比例，取值范围在0到1之间。
-    
-    返回：
-    np.ndarray: 添加噪声后的数据。
-    """
-    noisy_data = data.copy()
-    num_samples = data.shape[0]
-    num_noisy_samples = int(num_samples * proportion)
-    noisy_indices = np.random.choice(num_samples, num_noisy_samples, replace=False)
-    
-    noise = np.random.normal(mean, std_dev, data[noisy_indices].shape)
-    
-    # 确保噪声为非负数
-    noise = np.maximum(noise, 0)
-    
-    noisy_data[noisy_indices] += noise
-    return noisy_data
-
 def generate_graph_seq2seq_io_data(
         df, x_offsets, y_offsets, add_time_in_day=True, add_day_in_week=False, scaler=None
 ):
@@ -112,16 +87,6 @@ def generate_train_val_test(args):
         add_day_in_week=True,
     )
 
-    # 添加高斯噪声
-    #noise_mean = 10
-    #noise_std_dev = 500
-    #noise_proportion = 0.05  # 调整为20%、40%或60%
-    #x = add_gaussian_noise(x, noise_mean, noise_std_dev, noise_proportion)
-
-    print("x shape: ", x.shape, ", y shape: ", y.shape)
-    # Write the data into npz file.
-    # num_test = 6831, using the last 6831 examples as testing.
-    # for the rest: 7/8 is used for training, and 1/8 is used for validation.
     num_samples = x.shape[0]
     num_test = round(num_samples * 0.2)
     num_train = round(num_samples * 0.7)
