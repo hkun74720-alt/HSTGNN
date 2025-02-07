@@ -140,20 +140,7 @@ class LayerNorm(nn.Module):
             input = input * self.weight + self.bias
         return input
 
-def disentangle(x, w, j):
-    x = x.transpose(0,3,2,1)  # [S,D,N,T]
-    coef = pywt.wavedec(x, w, level=j)
-    coefl = [coef[0]]
-    for i in range(len(coef)-1):
-        coefl.append(None)
-    coefh = [None]
-    for i in range(len(coef)-1):
-        coefh.append(coef[i+1])
-    
-    xl = pywt.waverec(coefl, w).transpose(0,3,2,1)
-    xh = pywt.waverec(coefh, w).transpose(0,3,2,1)
-    
-    return xl[:,:3,:,:], xh[:,:3,:,:]  # 添加返回语句
+
 
 
 class GLU(nn.Module):
@@ -192,11 +179,12 @@ class TemporalEmbedding(nn.Module):
         super(TemporalEmbedding, self).__init__()
 
         self.time = time
+        self.dims = 6
         # temporal embeddings
-        self.time_day = nn.Parameter(torch.empty(time, features))
+        self.time_day = nn.Parameter(torch.empty(time, self.dims))
         nn.init.xavier_uniform_(self.time_day)
 
-        self.time_week = nn.Parameter(torch.empty(7, 128))
+        self.time_week = nn.Parameter(torch.empty(7, self.dims))
         nn.init.xavier_uniform_(self.time_week)
 
     def forward(self, x):
@@ -205,16 +193,15 @@ class TemporalEmbedding(nn.Module):
         time_day = self.time_day[
             (day_emb[:, -1, :] * self.time).type(torch.LongTensor)
         ]  
-        time_day = time_day.transpose(1, 2).unsqueeze(-1)
+        time_day = time_day.transpose(1, 2)#.unsqueeze(-1)
 
         week_emb = x[..., 2]  
         time_week = self.time_week[
             (week_emb[:, -1, :]).type(torch.LongTensor)
         ]  
-        time_week = time_week.transpose(1, 2).unsqueeze(-1)
+        time_week = time_week.transpose(1, 2)#.unsqueeze(-1)
 
-        tem_emb = time_day + time_week
-        return tem_emb
+        return time_day, time_week
 
 
 class PreNorm(nn.Module):
@@ -241,7 +228,8 @@ class FeedForward(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-    
+
+
 class TATT_1(nn.Module):
     def __init__(self, c_in, num_nodes, tem_size):
         super(TATT_1, self).__init__()
@@ -256,12 +244,13 @@ class TATT_1(nn.Module):
         self.b = nn.Parameter(torch.zeros(tem_size, tem_size), requires_grad=True)
         self.v = nn.Parameter(torch.rand(tem_size, tem_size), requires_grad=True)
         nn.init.xavier_uniform_(self.v)
-
+        # nn.init.xavier_uniform_(self.b)
         self.bn = nn.BatchNorm1d(tem_size)
 
     def forward(self, seq):
 
         seq = seq.transpose(3, 2)
+
         seq = seq.permute(0, 1, 3, 2).contiguous()
         c1 = seq.permute(0, 1, 3, 2)  # b,c,n,l->b,c,l,n
         f1 = self.conv1(c1).squeeze()  # b,l,n
@@ -277,52 +266,57 @@ class TATT_1(nn.Module):
 
         coefs = torch.softmax(logits, -1)
         T_coef = coefs.transpose(-1, -2)
+
         x_1 = torch.einsum('bcnl,blq->bcnq', seq, T_coef)
+
         return x_1
+
 
 class DualChannelLearner(nn.Module):
     def __init__(self, features=128, layers=4, length=12, num_nodes=170, dropout=0.1):
         super(DualChannelLearner, self).__init__()
 
-        # 低频通道：TATT_1 处理 XL
+
         self.low_freq_layers = nn.ModuleList([
             TATT_1(features, num_nodes, length) for _ in range(layers)
         ])
 
-        # 高频通道：TConv 逻辑合并
-        high_freq_layers = []
         kernel_size = int(length / layers + 1)
-        for _ in range(layers):
-            high_freq_layers.append(nn.Sequential(
-                nn.Conv2d(features, features, (1, kernel_size)),
-                nn.ReLU(),
-                nn.Dropout(dropout)
-            ))
-        
-        self.high_freq_layers = nn.Sequential(*high_freq_layers)
+        self.high_freq_layers = nn.ModuleList([
+            nn.Sequential(
+            nn.Conv2d(features, features, (1, kernel_size)),
+            nn.ReLU(),
+            nn.Dropout(dropout)) for _ in range(layers)
+        ])
 
-        # 低频 & 高频融合权重
         self.alpha = nn.Parameter(torch.tensor(-5.0))
 
     def forward(self, XL, XH):
-        # 低频数据通过 TATT_1 逐层处理
+        res_xl = XL
+        res_xh = XH
+
         for layer in self.low_freq_layers:
             XL = layer(XL)
+        
+        XL = (res_xl[..., 0] + XL[..., -1]).unsqueeze(-1)
 
-        # 高频数据逐层处理
-        XH = nn.functional.pad(XH, (1, 0, 0, 0))  # 处理边界
-        XH = self.high_freq_layers(XH) + XH[..., -1].unsqueeze(-1)
+        XH = nn.functional.pad(XH, (1, 0, 0, 0))  
+        
 
-        # 计算融合权重
+        for layer in self.high_freq_layers:
+            XH = layer(XH)  
+
+        XH = (res_xh[..., -1] + XH[..., -1]).unsqueeze(-1)
+
         alpha_sigmoid = torch.sigmoid(self.alpha)
         output = alpha_sigmoid * XL[..., -1].unsqueeze(-1) + (1 - alpha_sigmoid) * XH
 
-        return output  # 返回融合后的结果
-   
-class Spatial_block(nn.Module):
+        return output 
+ 
+class HGL_layer(nn.Module):
     def __init__(self, device, d_model, head, num_nodes, seq_length=1, dropout=0.1):
         "Take in model size and number of heads."
-        super(Spatial_block, self).__init__()
+        super(HGL_layer, self).__init__()
         assert d_model % head == 0
         self.d_k = d_model // head  # We assume d_v always equals d_k
         self.head = head
@@ -355,8 +349,8 @@ class Spatial_block(nn.Module):
     def forward(self, input, D_Graph):
         #print('input', input.shape)        #input torch.Size([64, 256, 170, 1])        
 
-        adp = F.softmax(F.relu(torch.mm(self.nodevec1, self.nodevec2)), dim=1).unsqueeze(0)
-        x_gcn = self.gcn(input, [adp])
+        A_graph = F.softmax(F.relu(torch.mm(self.nodevec1, self.nodevec2)), dim=1).unsqueeze(0)
+        x_gcn = self.gcn(input, [A_graph])
 
         x_gat = self.gat(input.transpose(1,3), D_Graph).transpose(1,3)
 
@@ -374,11 +368,35 @@ class Spatial_block(nn.Module):
         
 
         return x
+    
+    
+class HybridGraphLearner(nn.Module):
+    def __init__(self, device, d_model, head, num_nodes, seq_length, dropout, num_layers):
+        super(HybridGraphLearner, self).__init__()
+        
+        # 使用 ModuleList 来存储多个编码器层
+        self.layers = nn.ModuleList([
+            HGL_layer(device, 
+                    d_model=d_model, 
+                    head=head, 
+                    num_nodes=num_nodes, 
+                    seq_length=seq_length, 
+                    dropout=dropout)
+            for _ in range(num_layers)  # 根据 num_layers 的数量创建多个编码器层
+        ])
+
+    def forward(self, x, D_Graph):
+        #print(x.shape)
+        # 输入数据经过每一层 Encoder
+        for layer in self.layers:
+            x = layer(x, D_Graph)
+        return x
+
         
 
 
 
-class HSTGNN(nn.Module):
+class STAMT(nn.Module):
     def __init__(
         self,
         device,
@@ -399,7 +417,7 @@ class HSTGNN(nn.Module):
         self.input_dim = input_dim
         self.output_len = output_len
         self.head = 1
-        self.blocks = 4
+        self.layers = 2
 
         if num_nodes == 170 or num_nodes == 307 or num_nodes == 358  or num_nodes == 883:
             time = 288
@@ -409,33 +427,43 @@ class HSTGNN(nn.Module):
             time = 96
 
         self.Temb = TemporalEmbedding(time, channels)
-
-        
-
         self.start_conv_1 = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1))  
         self.start_conv_2 = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1))  
-
         self.network_channel = channels * 2
-
-
         
-        self.DCL = DualChannelLearner()
-
-        self.alpha_s = nn.Parameter(torch.tensor(-5.0)) 
-
-        self.use_emb = True
-        self.linear = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1))
-        
-        
-        self.SpatialBlock = Spatial_block(
-            device,
-            d_model=self.network_channel,
-            head=self.head,
-            num_nodes=num_nodes,
-            seq_length=1,
-            dropout=dropout,
+        self.DCL = DualChannelLearner(
+            features = 128, 
+            layers = self.layers, 
+            length = self.input_len, 
+            num_nodes = self.num_nodes, 
+            dropout=0.1
         )
-
+        
+        
+        self.HGL = HybridGraphLearner(
+            device,
+            d_model = self.network_channel,
+            head = self.head,
+            num_nodes = num_nodes,
+            seq_length = 1,
+            dropout = dropout,
+            num_layers = self.layers
+        )
+        
+        
+        self.MLP = nn.Conv2d(
+            in_channels=3,
+            out_channels=6,
+            kernel_size=(1, 1)
+        )
+        
+        
+        self.alpha_s = nn.Parameter(torch.tensor(-5.0)) 
+        self.E_s = nn.Parameter(torch.randn(6, num_nodes).to(device), requires_grad=True).to(device)
+        
+        self.fc = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1)
+        )
+        
         self.fc_st = nn.Conv2d(
             self.network_channel, self.network_channel, kernel_size=(1, 1)
         )
@@ -445,49 +473,47 @@ class HSTGNN(nn.Module):
         )
         
         
-        self.MLP = nn.Conv2d(in_channels=channels,
-                                                   out_channels=6,
-                                                   kernel_size=(1, 1))
+        
 
     def param_num(self):
         return sum([param.nelement() for param in self.parameters()])
 
     def forward(self, history_data):
-        #print('history_data', history_data.shape)                #history_data torch.Size([64, 3, 307, 12])
-
         
+        res = history_data
         input_data = history_data
-        
-        #decoupling layer
         residual_cpu = input_data.cpu()
-        xl, xh = disentangle(residual_cpu.detach().numpy(), 'db1', 2)
-        xl = torch.from_numpy(xl).to('cuda:0')   #low_freq
-        xh = torch.from_numpy(xh).to('cuda:0')   #high_freq
-        
-        #start_conv layer
-        history_data = history_data.permute(0, 3, 2, 1)
+        residual_numpy = residual_cpu.detach().numpy()
+        coef = pywt.wavedec(residual_numpy, 'db1', level=2)
+        coefl = [coef[0]] + [None] * (len(coef) - 1)
+        coefh = [None] + coef[1:]
+        xl = pywt.waverec(coefl, 'db1')
+        xh = pywt.waverec(coefh, 'db1')
+
+        xl = torch.from_numpy(xl).to(self.device)
+        xh = torch.from_numpy(xh).to(self.device)
+
         input_data_1 = self.start_conv_1( xl)  
-        input_data_2 = self.start_conv_2( xh)  #torch.Size([64, 128, 170, 12])
-        
-        #dual-channel learner
+        input_data_2 = self.start_conv_2( xh)  
+
         input_data = self.DCL(input_data_1, input_data_2)
         
 
-        tem_emb = self.Temb(history_data)
-        E_st = tem_emb
-        E_st = E_st* input_data 
-        E_d = self.MLP(E_st).squeeze(-1).transpose(1,2)[-1,:,:]
-        
-        #dynamic graph construction
-        D_graph = F.softmax(F.relu(torch.mm(E_d, E_d.transpose(0,1))), dim=1)
+        E_d = torch.tanh(self.MLP(history_data)[-1, ..., -1] * 
+                    (self.Temb(history_data.permute(0, 3, 2, 1))[0] * 
+                     self.Temb(history_data.permute(0, 3, 2, 1))[1])[-1, ...] * 
+                     self.E_s)
+        print(E_d.shape)
 
-                            
-        data_st = torch.cat([input_data] + [tem_emb], dim=1)
+        D_graph = F.softmax(F.relu(torch.mm(E_d.transpose(0,1), E_d)), dim=1)
 
-        #hybrid grapph learning moodule
-        data_st = self.SpatialBlock(data_st, D_graph) + self.fc_st(data_st)
+        res = self.fc(res)[..., 0].unsqueeze(-1)  
+        data_st = torch.cat([input_data] + [res], dim=1)
 
-        #output layer
+        skip = self.fc_st(data_st)
+        data_st = self.HGL(data_st, D_graph) + skip
+
+
         prediction = self.regression_layer(data_st)
 
         return prediction
