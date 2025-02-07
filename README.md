@@ -25,5 +25,6 @@ We also provided pre-trained models, and you can run the following code to test 
 ```
 python test.py
 ```
-
+##Citation
+If you find our work is helpful, please cite as:
 
