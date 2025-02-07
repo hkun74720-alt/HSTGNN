@@ -3,9 +3,6 @@ This is the pytorch implementation of HSTGNN.
 
 [This paper has been accepted by Information fusion 2025 now.](https://doi.org/10.1016/j.inffus.2025.102978)
 
-<p align="center">
-  <img src="figs/stamt_model.png" width="100%">
-</p>
 
 ## Dependencies
 The code is built based on Python 3.8, PyTorch 1.11.0, and Cuda 11.3.
