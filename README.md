@@ -23,7 +23,7 @@ python train.py
 We also provided pre-trained model, and yoou can run the following code to test the model.
 
 ```
-python train.py
+python test.py
 ```
 
 ## Results
