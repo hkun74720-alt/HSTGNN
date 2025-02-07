@@ -20,7 +20,7 @@ Run the following code to train the model.
 python train.py
 ```
 
-We also provided pre-trained model, and yoou can run the following code to test the model.
+We also provided pre-trained models, and you can run the following code to test the model.
 
 ```
 python test.py
