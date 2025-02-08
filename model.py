@@ -193,13 +193,13 @@ class TemporalEmbedding(nn.Module):
         time_day = self.time_day[
             (day_emb[:, -1, :] * self.time).type(torch.LongTensor)
         ]  
-        time_day = time_day.transpose(1, 2)#.unsqueeze(-1)
+        time_day = time_day.transpose(1, 2)
 
         week_emb = x[..., 2]  
         time_week = self.time_week[
             (week_emb[:, -1, :]).type(torch.LongTensor)
         ]  
-        time_week = time_week.transpose(1, 2)#.unsqueeze(-1)
+        time_week = time_week.transpose(1, 2)
 
         return time_day, time_week
 
@@ -366,7 +366,6 @@ class HGL_layer(nn.Module):
         x = self.LayerNorm(x)
         x = self.dropout2(x)
         
-
         return x
     
     
@@ -386,8 +385,6 @@ class HybridGraphLearner(nn.Module):
         ])
 
     def forward(self, x, D_Graph):
-        #print(x.shape)
-        # 输入数据经过每一层 Encoder
         for layer in self.layers:
             x = layer(x, D_Graph)
         return x
@@ -506,11 +503,9 @@ class HSTGNN(nn.Module):
                     (self.Temb(history_data.permute(0, 3, 2, 1))[0] * 
                      self.Temb(history_data.permute(0, 3, 2, 1))[1])[-1, ...] * 
                      self.E_s)
-        #print(E_d.shape)
 
         D_graph = F.softmax(F.relu(torch.mm(E_d.transpose(0,1), E_d)), dim=1)
 
-        # es = self.fc(res)[..., 0].unsqueeze(-1)  
         data_st = torch.cat([input_data] + [res], dim=1)
 
         skip = self.fc_st(data_st)
