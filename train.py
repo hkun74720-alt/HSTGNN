@@ -120,6 +120,7 @@ def main():
     if args.data == "PEMS08":
         args.data = "data//" + args.data
         args.num_nodes = 170
+        args.epochs = 250
 
 
     device = torch.device(args.device)
