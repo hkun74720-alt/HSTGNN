@@ -418,6 +418,7 @@ class HSTGNN(nn.Module):
         self.output_len = output_len
         self.head = 1
         self.layers = 2
+        self.dims = 6
 
         if num_nodes == 170 or num_nodes == 307 or num_nodes == 358  or num_nodes == 883:
             time = 288
@@ -427,6 +428,7 @@ class HSTGNN(nn.Module):
             time = 96
 
         self.Temb = TemporalEmbedding(time, channels)
+        self.start_conv_res = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1)) 
         self.start_conv_1 = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1))  
         self.start_conv_2 = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1))  
         self.network_channel = channels * 2
@@ -453,16 +455,15 @@ class HSTGNN(nn.Module):
         
         self.MLP = nn.Conv2d(
             in_channels=3,
-            out_channels=6,
+            out_channels=self.dims,
             kernel_size=(1, 1)
         )
         
         
         self.alpha_s = nn.Parameter(torch.tensor(-5.0)) 
-        self.E_s = nn.Parameter(torch.randn(6, num_nodes).to(device), requires_grad=True).to(device)
+        self.E_s = nn.Parameter(torch.randn(self.dims, num_nodes).to(device), requires_grad=True).to(device)
         
-        self.fc = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1)
-        )
+        #self.fc = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1))
         
         self.fc_st = nn.Conv2d(
             self.network_channel, self.network_channel, kernel_size=(1, 1)
@@ -495,20 +496,22 @@ class HSTGNN(nn.Module):
 
         input_data_1 = self.start_conv_1( xl)  
         input_data_2 = self.start_conv_2( xh)  
+        res = self.start_conv_res( res)[..., -1].unsqueeze( -1)
+        #print(res.shape) torch.Size([64, 128, 307, 12])
 
         input_data = self.DCL(input_data_1, input_data_2)
         
-
+        
         E_d = torch.tanh(self.MLP(history_data)[-1, ..., -1] * 
                     (self.Temb(history_data.permute(0, 3, 2, 1))[0] * 
                      self.Temb(history_data.permute(0, 3, 2, 1))[1])[-1, ...] * 
                      self.E_s)
-        print(E_d.shape)
+        #print(E_d.shape)
 
         D_graph = F.softmax(F.relu(torch.mm(E_d.transpose(0,1), E_d)), dim=1)
 
-        res_ = self.fc(res)[..., 0].unsqueeze(-1)  
-        data_st = torch.cat([input_data] + [res_], dim=1)
+        # es = self.fc(res)[..., 0].unsqueeze(-1)  
+        data_st = torch.cat([input_data] + [res], dim=1)
 
         skip = self.fc_st(data_st)
         data_st = self.HGL(data_st, D_graph) + skip
