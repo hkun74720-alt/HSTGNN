@@ -193,13 +193,13 @@ class TemporalEmbedding(nn.Module):
         time_day = self.time_day[
             (day_emb[:, -1, :] * self.time).type(torch.LongTensor)
         ]  
-        time_day = time_day.transpose(1, 2)
+        time_day = time_day.transpose(1, 2)#.unsqueeze(-1)
 
         week_emb = x[..., 2]  
         time_week = self.time_week[
             (week_emb[:, -1, :]).type(torch.LongTensor)
         ]  
-        time_week = time_week.transpose(1, 2)
+        time_week = time_week.transpose(1, 2)#.unsqueeze(-1)
 
         return time_day, time_week
 
@@ -298,7 +298,7 @@ class DualChannelLearner(nn.Module):
         for layer in self.low_freq_layers:
             XL = layer(XL)
         
-        XL = (res_xl[..., 0] + XL[..., -1]).unsqueeze(-1)
+        XL = (res_xl[..., -1] + XL[..., -1]).unsqueeze(-1)
 
         XH = nn.functional.pad(XH, (1, 0, 0, 0))  
         
@@ -309,7 +309,7 @@ class DualChannelLearner(nn.Module):
         XH = (res_xh[..., -1] + XH[..., -1]).unsqueeze(-1)
 
         alpha_sigmoid = torch.sigmoid(self.alpha)
-        output = alpha_sigmoid * XL[..., -1].unsqueeze(-1) + (1 - alpha_sigmoid) * XH
+        output = alpha_sigmoid * XL + (1 - alpha_sigmoid) * XH
 
         return output 
  
@@ -366,6 +366,7 @@ class HGL_layer(nn.Module):
         x = self.LayerNorm(x)
         x = self.dropout2(x)
         
+
         return x
     
     
@@ -373,7 +374,7 @@ class HybridGraphLearner(nn.Module):
     def __init__(self, device, d_model, head, num_nodes, seq_length, dropout, num_layers):
         super(HybridGraphLearner, self).__init__()
         
-        # 使用 ModuleList 来存储多个编码器层
+
         self.layers = nn.ModuleList([
             HGL_layer(device, 
                     d_model=d_model, 
@@ -381,10 +382,11 @@ class HybridGraphLearner(nn.Module):
                     num_nodes=num_nodes, 
                     seq_length=seq_length, 
                     dropout=dropout)
-            for _ in range(num_layers)  # 根据 num_layers 的数量创建多个编码器层
+            for _ in range(num_layers)  
         ])
 
     def forward(self, x, D_Graph):
+
         for layer in self.layers:
             x = layer(x, D_Graph)
         return x
@@ -414,7 +416,7 @@ class HSTGNN(nn.Module):
         self.input_dim = input_dim
         self.output_len = output_len
         self.head = 1
-        self.layers = 2
+        self.layers = 3
         self.dims = 6
 
         if num_nodes == 170 or num_nodes == 307 or num_nodes == 358  or num_nodes == 883:
@@ -431,7 +433,7 @@ class HSTGNN(nn.Module):
         self.network_channel = channels * 2
         
         self.DCL = DualChannelLearner(
-            features = 128, 
+            features = self.node_dim, 
             layers = self.layers, 
             length = self.input_len, 
             num_nodes = self.num_nodes, 
@@ -451,16 +453,14 @@ class HSTGNN(nn.Module):
         
         
         self.MLP = nn.Conv2d(
-            in_channels=3,
+            in_channels=self.input_dim,
             out_channels=self.dims,
             kernel_size=(1, 1)
         )
         
-        
-        self.alpha_s = nn.Parameter(torch.tensor(-5.0)) 
+
         self.E_s = nn.Parameter(torch.randn(self.dims, num_nodes).to(device), requires_grad=True).to(device)
-        
-        #self.fc = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1))
+
         
         self.fc_st = nn.Conv2d(
             self.network_channel, self.network_channel, kernel_size=(1, 1)
@@ -494,7 +494,7 @@ class HSTGNN(nn.Module):
         input_data_1 = self.start_conv_1( xl)  
         input_data_2 = self.start_conv_2( xh)  
         res = self.start_conv_res( res)[..., -1].unsqueeze( -1)
-        #print(res.shape) torch.Size([64, 128, 307, 12])
+
 
         input_data = self.DCL(input_data_1, input_data_2)
         
@@ -504,7 +504,9 @@ class HSTGNN(nn.Module):
                      self.Temb(history_data.permute(0, 3, 2, 1))[1])[-1, ...] * 
                      self.E_s)
 
+
         D_graph = F.softmax(F.relu(torch.mm(E_d.transpose(0,1), E_d)), dim=1)
+
 
         data_st = torch.cat([input_data] + [res], dim=1)
 
