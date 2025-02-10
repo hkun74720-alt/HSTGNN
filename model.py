@@ -372,8 +372,7 @@ class HGL_layer(nn.Module):
 class HybridGraphLearner(nn.Module):
     def __init__(self, device, d_model, head, num_nodes, seq_length, dropout, num_layers):
         super(HybridGraphLearner, self).__init__()
-        
-        # 使用 ModuleList 来存储多个编码器层
+
         self.layers = nn.ModuleList([
             HGL_layer(device, 
                     d_model=d_model, 
@@ -381,12 +380,11 @@ class HybridGraphLearner(nn.Module):
                     num_nodes=num_nodes, 
                     seq_length=seq_length, 
                     dropout=dropout)
-            for _ in range(num_layers)  # 根据 num_layers 的数量创建多个编码器层
+            for _ in range(num_layers)  
         ])
 
     def forward(self, x, D_Graph):
-        #print(x.shape)
-        # 输入数据经过每一层 Encoder
+
         for layer in self.layers:
             x = layer(x, D_Graph)
         return x
@@ -419,10 +417,9 @@ class HSTGNN(nn.Module):
         self.layers = 2
         self.dims = 6
 
-        if num_nodes == 170 or num_nodes == 307 or num_nodes == 358  or num_nodes == 304:
+        if num_nodes == 170 or num_nodes == 304 or num_nodes == 307  or num_nodes == 325:
             time = 288
-        elif num_nodes == 207 or num_nodes == 325:
-            time = 288
+            self.layers = 2
 
         self.Temb = TemporalEmbedding(time, channels)
         self.start_conv_res = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1)) 
