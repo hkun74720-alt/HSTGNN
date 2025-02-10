@@ -10,6 +10,12 @@ The code is built based on Python 3.8, PyTorch 1.11.0, and Cuda 11.3.
 ## Datasets
 The datasets can be found in STSGCN [https://github.com/Davidham3/STSGCN] and DCRNN [https://github.com/liyaguang/DCRNN].
 
+Run the following code to generate training data.
+
+```
+python data_pre.py
+```
+
 ## Train Commands
 Run the following code to train the model.
 
