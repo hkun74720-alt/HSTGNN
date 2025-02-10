@@ -127,6 +127,21 @@ def main():
         args.num_nodes = 170
         args.epochs = 150
 
+    elif args.data == "PEMSBAY":
+        args.data = "data//" + args.data
+        args.num_nodes = 325
+        args.epochs = 200
+
+    elif args.data == "PEMS03":
+        args.data = "data//" + args.data
+        args.num_nodes = 358
+        args.epochs = 200
+
+    elif args.data == "PEMS04":
+        args.data = "data//" + args.data
+        args.num_nodes = 307
+        args.epochs = 200
+
 
     device = torch.device(args.device)
 
