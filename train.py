@@ -122,6 +122,11 @@ def main():
         args.num_nodes = 170
         args.epochs = 250
 
+    elif args.data == "Urban":
+        args.data = "data//" + args.data
+        args.num_nodes = 170
+        args.epochs = 150
+
 
     device = torch.device(args.device)
 
