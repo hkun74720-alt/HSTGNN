@@ -179,12 +179,11 @@ class TemporalEmbedding(nn.Module):
         super(TemporalEmbedding, self).__init__()
 
         self.time = time
-        self.dims = 6
         # temporal embeddings
-        self.time_day = nn.Parameter(torch.empty(time, self.dims))
+        self.time_day = nn.Parameter(torch.empty(time, features))
         nn.init.xavier_uniform_(self.time_day)
 
-        self.time_week = nn.Parameter(torch.empty(7, self.dims))
+        self.time_week = nn.Parameter(torch.empty(7, features))
         nn.init.xavier_uniform_(self.time_week)
 
     def forward(self, x):
@@ -193,13 +192,13 @@ class TemporalEmbedding(nn.Module):
         time_day = self.time_day[
             (day_emb[:, -1, :] * self.time).type(torch.LongTensor)
         ]  
-        time_day = time_day.transpose(1, 2)#.unsqueeze(-1)
+        time_day = time_day.transpose(1, 2).unsqueeze(-1)
 
         week_emb = x[..., 2]  
         time_week = self.time_week[
             (week_emb[:, -1, :]).type(torch.LongTensor)
         ]  
-        time_week = time_week.transpose(1, 2)#.unsqueeze(-1)
+        time_week = time_week.transpose(1, 2).unsqueeze(-1)
 
         return time_day, time_week
 
@@ -374,7 +373,7 @@ class HybridGraphLearner(nn.Module):
     def __init__(self, device, d_model, head, num_nodes, seq_length, dropout, num_layers):
         super(HybridGraphLearner, self).__init__()
         
-
+        # 使用 ModuleList 来存储多个编码器层
         self.layers = nn.ModuleList([
             HGL_layer(device, 
                     d_model=d_model, 
@@ -382,11 +381,12 @@ class HybridGraphLearner(nn.Module):
                     num_nodes=num_nodes, 
                     seq_length=seq_length, 
                     dropout=dropout)
-            for _ in range(num_layers)  
+            for _ in range(num_layers)  # 根据 num_layers 的数量创建多个编码器层
         ])
 
     def forward(self, x, D_Graph):
-
+        #print(x.shape)
+        # 输入数据经过每一层 Encoder
         for layer in self.layers:
             x = layer(x, D_Graph)
         return x
@@ -419,12 +419,12 @@ class HSTGNN(nn.Module):
         self.layers = 2
         self.dims = 6
 
-        if num_nodes == 307 or num_nodes == 358:
+        if num_nodes == 170 or num_nodes == 307 or num_nodes == 358  or num_nodes == 883:
             time = 288
-            self.layers = 3
-        elif num_nodes == 304 or num_nodes == 325 or num_nodes == 170:
-            time = 288
-        
+        elif num_nodes == 250 or num_nodes == 266:
+            time = 48
+        elif num_nodes>200:
+            time = 96
 
         self.Temb = TemporalEmbedding(time, channels)
         self.start_conv_res = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1)) 
@@ -433,7 +433,7 @@ class HSTGNN(nn.Module):
         self.network_channel = channels * 2
         
         self.DCL = DualChannelLearner(
-            features = self.node_dim, 
+            features = 128, 
             layers = self.layers, 
             length = self.input_len, 
             num_nodes = self.num_nodes, 
@@ -453,14 +453,17 @@ class HSTGNN(nn.Module):
         
         
         self.MLP = nn.Conv2d(
-            in_channels=self.input_dim,
+            in_channels=3,
             out_channels=self.dims,
             kernel_size=(1, 1)
         )
         
-
-        self.E_s = nn.Parameter(torch.randn(self.dims, num_nodes).to(device), requires_grad=True).to(device)
-
+        
+        #self.alpha_s = nn.Parameter(torch.tensor(-5.0)) 
+        self.E_s = nn.Parameter(torch.randn(64, self.dims, num_nodes).to(device), requires_grad=True).to(device)
+        
+        self.fc_d = nn.Conv2d(channels, self.dims, kernel_size=(1, 1))
+        self.fc_w = nn.Conv2d(channels, self.dims, kernel_size=(1, 1))
         
         self.fc_st = nn.Conv2d(
             self.network_channel, self.network_channel, kernel_size=(1, 1)
@@ -493,22 +496,30 @@ class HSTGNN(nn.Module):
 
         input_data_1 = self.start_conv_1( xl)  
         input_data_2 = self.start_conv_2( xh)  
-        res = self.start_conv_res( res)[..., -1].unsqueeze( -1)
-
+        ##res = self.start_conv_res( res)[..., -1].unsqueeze( -1)
+        #print(res.shape) torch.Size([64, 128, 307, 12])
 
         input_data = self.DCL(input_data_1, input_data_2)
+        E_tod, E_dow = self.Temb(history_data.permute(0, 3, 2, 1))
+        TE = E_tod + E_dow
         
+        #E_DE = self.fc_d(E_tod).squeeze( -1)
+        #E_WE = self.fc_w(E_dow).squeeze( -1)
         
-        E_d = torch.tanh(self.MLP(history_data)[-1, ..., -1] * 
-                    (self.Temb(history_data.permute(0, 3, 2, 1))[0] * 
-                     self.Temb(history_data.permute(0, 3, 2, 1))[1])[-1, ...] * 
-                     self.E_s)
+        E_d = torch.tanh(self.MLP(history_data)[..., -1] * 
+                    ((self.fc_d(E_tod).squeeze( -1)) * 
+                      (self.fc_d(E_dow).squeeze( -1))* 
+                     self.E_s))
+        
+        #print(E_d.shape)torch.Size([64, 6, 170])
+        D_graph = D_graph = F.softmax(F.relu(torch.matmul(E_d.transpose(1, 2), E_d)), dim= 1)[-1, ...]
+        #print(A.shape)
 
+        
+        ##D_graph = F.softmax(F.relu(torch.einsum('bud,bvd->buv', [E_d.transpose(1, 2), E_d])), dim=1)[-1, ...]
 
-        D_graph = F.softmax(F.relu(torch.mm(E_d.transpose(0,1), E_d)), dim=1)
-
-
-        data_st = torch.cat([input_data] + [res], dim=1)
+        # es = self.fc(res)[..., 0].unsqueeze(-1)  
+        data_st = torch.cat([input_data] + [TE], dim=1)
 
         skip = self.fc_st(data_st)
         data_st = self.HGL(data_st, D_graph) + skip
@@ -698,12 +709,11 @@ class TemporalEmbedding(nn.Module):
         super(TemporalEmbedding, self).__init__()
 
         self.time = time
-        self.dims = 6
         # temporal embeddings
-        self.time_day = nn.Parameter(torch.empty(time, self.dims))
+        self.time_day = nn.Parameter(torch.empty(time, features))
         nn.init.xavier_uniform_(self.time_day)
 
-        self.time_week = nn.Parameter(torch.empty(7, self.dims))
+        self.time_week = nn.Parameter(torch.empty(7, features))
         nn.init.xavier_uniform_(self.time_week)
 
     def forward(self, x):
@@ -712,13 +722,13 @@ class TemporalEmbedding(nn.Module):
         time_day = self.time_day[
             (day_emb[:, -1, :] * self.time).type(torch.LongTensor)
         ]  
-        time_day = time_day.transpose(1, 2)#.unsqueeze(-1)
+        time_day = time_day.transpose(1, 2).unsqueeze(-1)
 
         week_emb = x[..., 2]  
         time_week = self.time_week[
             (week_emb[:, -1, :]).type(torch.LongTensor)
         ]  
-        time_week = time_week.transpose(1, 2)#.unsqueeze(-1)
+        time_week = time_week.transpose(1, 2).unsqueeze(-1)
 
         return time_day, time_week
 
@@ -893,7 +903,7 @@ class HybridGraphLearner(nn.Module):
     def __init__(self, device, d_model, head, num_nodes, seq_length, dropout, num_layers):
         super(HybridGraphLearner, self).__init__()
         
-
+        # 使用 ModuleList 来存储多个编码器层
         self.layers = nn.ModuleList([
             HGL_layer(device, 
                     d_model=d_model, 
@@ -901,11 +911,12 @@ class HybridGraphLearner(nn.Module):
                     num_nodes=num_nodes, 
                     seq_length=seq_length, 
                     dropout=dropout)
-            for _ in range(num_layers)  
+            for _ in range(num_layers)  # 根据 num_layers 的数量创建多个编码器层
         ])
 
     def forward(self, x, D_Graph):
-
+        #print(x.shape)
+        # 输入数据经过每一层 Encoder
         for layer in self.layers:
             x = layer(x, D_Graph)
         return x
@@ -938,12 +949,10 @@ class HSTGNN(nn.Module):
         self.layers = 2
         self.dims = 6
 
-        if num_nodes == 307 or num_nodes == 358:
+        if num_nodes == 170 or num_nodes == 307 or num_nodes == 358  or num_nodes == 304:
             time = 288
-            self.layers = 3
-        elif num_nodes == 304 or num_nodes == 325 or num_nodes == 170:
+        elif num_nodes == 207 or num_nodes == 325:
             time = 288
-        
 
         self.Temb = TemporalEmbedding(time, channels)
         self.start_conv_res = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1)) 
@@ -952,7 +961,7 @@ class HSTGNN(nn.Module):
         self.network_channel = channels * 2
         
         self.DCL = DualChannelLearner(
-            features = self.node_dim, 
+            features = 128, 
             layers = self.layers, 
             length = self.input_len, 
             num_nodes = self.num_nodes, 
@@ -972,14 +981,15 @@ class HSTGNN(nn.Module):
         
         
         self.MLP = nn.Conv2d(
-            in_channels=self.input_dim,
+            in_channels=3,
             out_channels=self.dims,
             kernel_size=(1, 1)
         )
+
+        self.E_s = nn.Parameter(torch.randn(64, self.dims, num_nodes, 1).to(device), requires_grad=True).to(device)
         
-
-        self.E_s = nn.Parameter(torch.randn(self.dims, num_nodes).to(device), requires_grad=True).to(device)
-
+        self.fc_d = nn.Conv2d(channels, self.dims, kernel_size=(1, 1))
+        self.fc_w = nn.Conv2d(channels, self.dims, kernel_size=(1, 1))
         
         self.fc_st = nn.Conv2d(
             self.network_channel, self.network_channel, kernel_size=(1, 1)
@@ -1012,22 +1022,20 @@ class HSTGNN(nn.Module):
 
         input_data_1 = self.start_conv_1( xl)  
         input_data_2 = self.start_conv_2( xh)  
-        res = self.start_conv_res( res)[..., -1].unsqueeze( -1)
 
 
         input_data = self.DCL(input_data_1, input_data_2)
+        E_tod, E_dow = self.Temb(history_data.permute(0, 3, 2, 1))
+        TE = E_tod + E_dow
         
-        
-        E_d = torch.tanh(self.MLP(history_data)[-1, ..., -1] * 
-                    (self.Temb(history_data.permute(0, 3, 2, 1))[0] * 
-                     self.Temb(history_data.permute(0, 3, 2, 1))[1])[-1, ...] * 
-                     self.E_s)
+        E_d = torch.tanh(self.MLP(history_data)[..., -1].unsqueeze(-1)* 
+                    (self.fc_d(self.Temb(history_data.permute(0, 3, 2, 1))[0]) * 
+                     self.fc_w(self.Temb(history_data.permute(0, 3, 2, 1))[1])) * 
+                     self.E_s)[-1, ..., -1]
 
+        D_graph = F.softmax(F.relu(torch.mm(E_d.transpose(0, 1), E_d)), dim= 1)
 
-        D_graph = F.softmax(F.relu(torch.mm(E_d.transpose(0,1), E_d)), dim=1)
-
-
-        data_st = torch.cat([input_data] + [res], dim=1)
+        data_st = torch.cat([input_data] + [TE], dim=1)
 
         skip = self.fc_st(data_st)
         data_st = self.HGL(data_st, D_graph) + skip
