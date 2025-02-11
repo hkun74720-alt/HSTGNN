@@ -25,7 +25,7 @@ parser.add_argument("--dropout", type=float, default=0.1, help="dropout rate")
 parser.add_argument(
     "--weight_decay", type=float, default=0.0001, help="weight decay rate"
 )
-parser.add_argument("--epochs", type=int, default=500, help="")
+parser.add_argument("--epochs", type=int, default=250, help="")
 parser.add_argument("--print_every", type=int, default=50, help="")
 parser.add_argument(
     "--save",
@@ -120,27 +120,39 @@ def main():
     if args.data == "PEMS08":
         args.data = "data//" + args.data
         args.num_nodes = 170
-        args.epochs = 250
+
 
     elif args.data == "Urban":
         args.data = "data//" + args.data
         args.num_nodes = 170
-        args.epochs = 150
+
 
     elif args.data == "PEMSBAY":
         args.data = "data//" + args.data
         args.num_nodes = 325
-        args.epochs = 200
+
 
     elif args.data == "PEMS03":
         args.data = "data//" + args.data
         args.num_nodes = 358
-        args.epochs = 200
+
 
     elif args.data == "PEMS04":
         args.data = "data//" + args.data
         args.num_nodes = 307
-        args.epochs = 200
+        
+    elif args.data == "PEMS08_60":
+        args.data = "data//" + args.data
+        args.num_nodes = 170
+        
+    elif args.data == "PEMS03_60":
+        args.data = "data//" + args.data
+        args.num_nodes = 358
+        
+    elif args.data == "Urban_60":
+        args.data = "data//" + args.data
+        args.num_nodes = 304
+
 
 
     device = torch.device(args.device)
