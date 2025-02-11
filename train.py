@@ -126,16 +126,9 @@ def main():
         args.data = "data//" + args.data
         args.num_nodes = 170
 
-
     elif args.data == "PEMSBAY":
         args.data = "data//" + args.data
         args.num_nodes = 325
-
-
-    elif args.data == "PEMS03":
-        args.data = "data//" + args.data
-        args.num_nodes = 358
-
 
     elif args.data == "PEMS04":
         args.data = "data//" + args.data
@@ -144,10 +137,6 @@ def main():
     elif args.data == "PEMS08_60":
         args.data = "data//" + args.data
         args.num_nodes = 170
-        
-    elif args.data == "PEMS03_60":
-        args.data = "data//" + args.data
-        args.num_nodes = 358
         
     elif args.data == "Urban_60":
         args.data = "data//" + args.data
