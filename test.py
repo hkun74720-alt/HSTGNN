@@ -1,7 +1,7 @@
 import util
 import argparse
 import torch
-from model_1 import HSTGNN
+from model import HSTGNN
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
