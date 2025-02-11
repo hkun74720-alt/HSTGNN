@@ -373,7 +373,7 @@ class HybridGraphLearner(nn.Module):
     def __init__(self, device, d_model, head, num_nodes, seq_length, dropout, num_layers):
         super(HybridGraphLearner, self).__init__()
         
-        # 使用 ModuleList 来存储多个编码器层
+        
         self.layers = nn.ModuleList([
             HGL_layer(device, 
                     d_model=d_model, 
@@ -381,7 +381,7 @@ class HybridGraphLearner(nn.Module):
                     num_nodes=num_nodes, 
                     seq_length=seq_length, 
                     dropout=dropout)
-            for _ in range(num_layers)  # 根据 num_layers 的数量创建多个编码器层
+            for _ in range(num_layers)  
         ])
 
     def forward(self, x, D_Graph):
