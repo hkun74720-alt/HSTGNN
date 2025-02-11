@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=str, default="cuda:0", help="")
-parser.add_argument("--data", type=str, default="PEMS08", help="data path")
+parser.add_argument("--data", type=str, default="Urban", help="data path")
 parser.add_argument("--input_dim", type=int, default=3, help="input_dim")
 parser.add_argument("--channels", type=int, default=128, help="number of nodes")
-parser.add_argument("--num_nodes", type=int, default=170, help="number of nodes")
+parser.add_argument("--num_nodes", type=int, default=304, help="number of nodes")
 parser.add_argument("--input_len", type=int, default=12, help="input_len")
 parser.add_argument("--output_len", type=int, default=12, help="out_len")
 parser.add_argument("--batch_size", type=int, default=64, help="batch size")
@@ -22,7 +22,7 @@ parser.add_argument(
     "--weight_decay", type=float, default=0.0001, help="weight decay rate"
 )
 parser.add_argument('--checkpoint', type=str,
-                    default='log/2025-02-08-12:02:21-PEMS08/best_model.pth', help='')
+                    default='log/2025-02-08-20:45:52-Urban/best_model.pth', help='')
 parser.add_argument('--plotheatmap', type=str, default='True', help='')
 args = parser.parse_args()
 
@@ -31,36 +31,35 @@ def main():
     if args.data == "Urban":
         args.data = "data//"+args.data
         args.num_nodes = 304
-        args.adjdata = "data/adj/adj_PEMS08_gs.npy"
     
     elif args.data == "PEMS08":
         args.data = "data//"+args.data
         args.num_nodes = 170
-        args.adjdata = "data/adj/adj_PEMS08_gs.npy"
-    
-    elif args.data == "PEMS03":
-        args.data = "data//"+args.data
-        args.num_nodes = 358
-        args.adjdata = "data/adj/adj_PEMS03_gs.npy"
-
+        
     elif args.data == "PEMS04":
         args.data = "data//" + args.data
         args.num_nodes = 307
-    
+        
     elif args.data == "PEMSBAY":
         args.data = "data//"+args.data
         args.num_nodes = 325
-        args.adjdata = "data/adj/adj_PEMSBAY_gs.npy"
-
-    elif args.data == "METRLA":
+        
+    elif args.data == "PEMS03":
         args.data = "data//"+args.data
-        args.num_nodes = 207
-        args.adjdata = "data/adj/adj_METRLA_gs.npy"
+        args.num_nodes = 358
+        
+        
+    elif args.data == "Urban_60":
+        args.data = "data//"+args.data
+        args.num_nodes = 170
+        
+    elif args.data == "PEMS08_60":
+        args.data = "data//"+args.data
+        args.num_nodes = 170
     
-    elif args.data == "PEMS07":
+    elif args.data == "PEMS03_60":
         args.data = "data//"+args.data
-        args.num_nodes = 883
-        args.adjdata = "data/adj/adj_PEMS07_gs.npy"
+        args.num_nodes = 358
 
     device = torch.device(args.device)
 
