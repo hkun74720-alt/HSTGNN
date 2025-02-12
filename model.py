@@ -322,13 +322,9 @@ class HGL_layer(nn.Module):
         self.num_nodes = num_nodes
         self.seq_length = seq_length
         self.d_model = d_model
-        
 
-        #self.attention = SpatialAttention(factor=5, scale=None, attention_dropout=0.1, num_nodes=self.num_nodes)
         self.gcn = gcn(256, 256, dropout, support_len=1, order=1)
         self.gat = GAT(256, 256, dropout, alpha=0.2, nheads=1)
-
-    
         
         self.LayerNorm = LayerNorm(
             [d_model, num_nodes, seq_length], elementwise_affine=False
@@ -386,14 +382,9 @@ class HybridGraphLearner(nn.Module):
 
     def forward(self, x, D_Graph):
         #print(x.shape)
-        # 输入数据经过每一层 Encoder
         for layer in self.layers:
             x = layer(x, D_Graph)
         return x
-
-        
-
-
 
 class HSTGNN(nn.Module):
     def __init__(
