@@ -419,11 +419,9 @@ class HSTGNN(nn.Module):
         self.layers = 2
         self.dims = 6
 
-        if num_nodes == 170 or num_nodes == 307 or num_nodes == 358  or num_nodes == 304:
+        if num_nodes == 170 or num_nodes == 304:
             time = 288
-            
-        elif num_nodes == 207 or num_nodes == 325:
-            time = 288
+            self.layers = 2
 
         self.Temb = TemporalEmbedding(time, channels)
         self.start_conv_res = nn.Conv2d(self.input_dim, channels, kernel_size=(1, 1)) 
