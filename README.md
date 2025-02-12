@@ -5,9 +5,7 @@ This is the pytorch implementation of HSTGNN.
 
 
 ## Dependencies
-The code is built based on Python 3.8.
-
-Run the following code to install packages.
+The code is built based on Python 3.8. Run the following code to install packages.
 
 ```
 pip install tables pandas scipy Pywavelets
