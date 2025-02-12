@@ -19,7 +19,7 @@ Run the following code to generate training data.
 ```
 python data_pre.py
 ```
-You can also download pprocessed data from here[https://pan.baidu.com/s/1R7rc_NENS3AEoPGq3MCNCg?pwd=q5eu 提取码: q5eu]
+You can also download pprocessed data from [here](https://pan.baidu.com/s/1R7rc_NENS3AEoPGq3MCNCg?pwd=q5eu).
 ## Train Commands
 Run the following code to train the model.
 
