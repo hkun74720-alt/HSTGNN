@@ -36,22 +36,6 @@ def main():
         args.data = "data//"+args.data
         args.num_nodes = 170
         
-    elif args.data == "PEMS04":
-        args.data = "data//" + args.data
-        args.num_nodes = 307
-        
-    elif args.data == "PEMSBAY":
-        args.data = "data//"+args.data
-        args.num_nodes = 325
-        
-    elif args.data == "Urban_60":
-        args.data = "data//"+args.data
-        args.num_nodes = 170
-        
-    elif args.data == "PEMS08_60":
-        args.data = "data//"+args.data
-        args.num_nodes = 170
-    
 
     device = torch.device(args.device)
 
