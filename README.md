@@ -35,3 +35,14 @@ python test.py
 ## Citation
 If you find our work is helpful, please cite as:
 
+
+```
+@article{wang2025hybrid,
+  title={Hybrid spatial--temporal graph neural network for traffic forecasting},
+  author={Wang, Peng and Feng, Longxi and Zhu, Yijie and Wu, Haopeng},
+  journal={Information Fusion},
+  pages={102978},
+  year={2025},
+  publisher={Elsevier}
+}
+```
