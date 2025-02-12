@@ -5,7 +5,7 @@ This is the pytorch implementation of HSTGNN.
 
 
 ## Dependencies
-The code is built based on Python 3.8, PyTorch 1.11.0, and Cuda 11.3.
+The code is built based on Python 3.8.
 
 ## Datasets
 The datasets can be found in STSGCN [https://github.com/Davidham3/STSGCN] and DCRNN [https://github.com/liyaguang/DCRNN].
