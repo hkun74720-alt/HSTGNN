@@ -5,48 +5,30 @@ import torch.nn.functional as F
 import math
 import numpy as np
 import pywt
-class nconv(nn.Module):
-    def __init__(self):
-        super(nconv, self).__init__()
 
-    def forward(self, x, A):
-      
+class Diffusion_GCN(nn.Module):
+    def __init__(self, channels=128, diffusion_step=1, dropout=0.1):
+        super().__init__()
+        self.diffusion_step = diffusion_step
+        self.conv = nn.Conv2d(diffusion_step * channels, channels, (1, 1))
+        self.dropout = nn.Dropout(dropout)
 
-        x = torch.einsum('ncvl,nwv->ncwl', (x, A))
-        
-        return x.contiguous()
-
-class linear(nn.Module):
-    def __init__(self, c_in, c_out):
-        super(linear, self).__init__()
-        self.mlp = torch.nn.Conv2d(c_in, c_out, kernel_size=(1, 1), padding=(0, 0), stride=(1, 1), bias=True)
-
-    def forward(self, x):
-        return self.mlp(x)
-
-class gcn(nn.Module):
-    def __init__(self, c_in, c_out, dropout, support_len=3, order=2):
-        super(gcn, self).__init__()
-        self.nconv = nconv()
-        c_in = (order * support_len + 1) * c_in
-        self.mlp = linear(c_in, c_out)
-        self.dropout = dropout
-        self.order = order
-
-    def forward(self, x, support):
-        out = [x]
-        for a in support:
-            x1 = self.nconv(x, a)
-            out.append(x1)
-            for k in range(2, self.order + 1):
-                x2 = self.nconv(x1, a)
-                out.append(x2)
-                x1 = x2
-
-        h = torch.cat(out, dim=1)
-        h = self.mlp(h)
-        return h
-
+    def forward(self, x, adj):
+        #print(x.shape)
+        #print(adj.shape)
+        out = []
+        for i in range(0, self.diffusion_step):
+            if adj.dim() == 3:
+                x = torch.einsum("bcnt,bnm->bcmt", x, adj).contiguous()
+                out.append(x)
+            elif adj.dim() == 2:
+                x = torch.einsum("bcnt,nm->bcmt", x, adj).contiguous()
+                out.append(x)
+        x = torch.cat(out, dim=1)
+        x = self.conv(x)
+        output = self.dropout(x)
+        #print(output.shape)
+        return output
 class GraphAttentionLayer(nn.Module):
     """
     Simple GAT layer, similar to https://arxiv.org/abs/1710.10903
@@ -323,7 +305,8 @@ class HGL_layer(nn.Module):
         self.seq_length = seq_length
         self.d_model = d_model
 
-        self.gcn = gcn(256, 256, dropout, support_len=1, order=1)
+        
+        self.gcn = Diffusion_GCN(channels=256, diffusion_step=1, dropout=dropout)
         self.gat = GAT(256, 256, dropout, alpha=0.2, nheads=1)
         
         self.LayerNorm = LayerNorm(
@@ -345,7 +328,7 @@ class HGL_layer(nn.Module):
         #print('input', input.shape)        #input torch.Size([64, 256, 170, 1])        
 
         A_graph = F.softmax(F.relu(torch.mm(self.nodevec1, self.nodevec2)), dim=1).unsqueeze(0)
-        x_gcn = self.gcn(input, [A_graph])
+        x_gcn = self.gcn(input, A_graph)
 
         x_gat = self.gat(input.transpose(1,3), D_Graph).transpose(1,3)
 
