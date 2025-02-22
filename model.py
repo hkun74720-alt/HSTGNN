@@ -393,7 +393,7 @@ class HSTGNN(nn.Module):
         self.layers = 2
         self.dims = 6
 
-        if num_nodes == 170 or num_nodes == 207 or num_nodes == 304 or num_nodes == 307 or num_nodes == 325:
+        if num_nodes == 170 or num_nodes == 304 or num_nodes == 307 or num_nodes == 325:
             time = 288
             self.layers = 2
         elif num_nodes == 358 :
