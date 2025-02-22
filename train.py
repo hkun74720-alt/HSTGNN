@@ -13,10 +13,10 @@ import torch.optim as optim
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=str, default="cuda:0", help="")
-parser.add_argument("--data", type=str, default="PEMS08", help="data path")
+parser.add_argument("--data", type=str, default="METRLA", help="data path")
 parser.add_argument("--input_dim", type=int, default=3, help="input_dim")
 parser.add_argument("--channels", type=int, default=128, help="number of nodes")
-parser.add_argument("--num_nodes", type=int, default=170, help="number of nodes")
+parser.add_argument("--num_nodes", type=int, default=207, help="number of nodes")
 parser.add_argument("--input_len", type=int, default=12, help="input_len")
 parser.add_argument("--output_len", type=int, default=12, help="out_len")
 parser.add_argument("--batch_size", type=int, default=64, help="batch size")
@@ -25,7 +25,7 @@ parser.add_argument("--dropout", type=float, default=0.1, help="dropout rate")
 parser.add_argument(
     "--weight_decay", type=float, default=0.0001, help="weight decay rate"
 )
-parser.add_argument("--epochs", type=int, default=250, help="")
+parser.add_argument("--epochs", type=int, default=200, help="")
 parser.add_argument("--print_every", type=int, default=50, help="")
 parser.add_argument(
     "--save",
@@ -61,10 +61,11 @@ class trainer:
         )
         self.model.to(device)
         self.optimizer = Ranger(self.model.parameters(), lr=lrate, weight_decay=wdecay)
-        # self.optimizer = optim.Adam(self.model.parameters(), lr=lrate, weight_decay=wdecay)
+        #self.optimizer = optim.Adam(self.model.parameters(), lr=lrate, weight_decay=wdecay)
         self.loss = util.MAE_torch
         self.scaler = scaler
         self.clip = 5
+        print("The number of parameters: {}".format(self.model.param_num()))
         print(self.model)
         # exit()
 
@@ -116,14 +117,51 @@ def main():
 
     data = args.data
 
-    if args.data == "PEMS08":
+    if args.data == "PEMSBAY":
+        args.data = "data//" + args.data
+        args.num_nodes = 325
+
+    elif args.data == "PEMS08":
         args.data = "data//" + args.data
         args.num_nodes = 170
+        
+    elif args.data == "PEMS04":
+        args.data = "data//" + args.data
+        args.num_nodes = 307
+    
+    elif args.data == "PEMS08_60":
+        args.data = "data//" + args.data
+        args.num_nodes = 170
+        args.input_len = 60
+        args.output_len = 60
 
+    
+    elif args.data == "Urban_60":
+        args.data = "data//" + args.data
+        args.num_nodes = 304
+        args.input_len = 60
+        args.output_len = 60
+
+    elif args.data == "PEMS03":
+        args.data = "data//" + args.data
+        args.num_nodes = 358
+        args.epochs = 300
+        args.es_patience = 100
 
     elif args.data == "Urban":
         args.data = "data//" + args.data
-        args.num_nodes = 170
+        args.num_nodes = 304
+
+    elif args.data == "METRLA":
+        args.data = "data/METRLA"
+        args.num_nodes = 207
+
+    elif args.data == "PEMS03_60":
+        args.data = "data//"+args.data
+        args.num_nodes = 358
+        args.epochs = 300
+
+
 
     device = torch.device(args.device)
 
