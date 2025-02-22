@@ -13,10 +13,10 @@ import torch.optim as optim
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=str, default="cuda:0", help="")
-parser.add_argument("--data", type=str, default="METRLA", help="data path")
+parser.add_argument("--data", type=str, default="PEMS08", help="data path")
 parser.add_argument("--input_dim", type=int, default=3, help="input_dim")
 parser.add_argument("--channels", type=int, default=128, help="number of nodes")
-parser.add_argument("--num_nodes", type=int, default=207, help="number of nodes")
+parser.add_argument("--num_nodes", type=int, default=170, help="number of nodes")
 parser.add_argument("--input_len", type=int, default=12, help="input_len")
 parser.add_argument("--output_len", type=int, default=12, help="out_len")
 parser.add_argument("--batch_size", type=int, default=64, help="batch size")
